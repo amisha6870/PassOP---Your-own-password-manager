@@ -1,50 +1,61 @@
 const express = require('express')
 const dotenv = require('dotenv')
-const { MongoClient } = require('mongodb'); 
-const bodyparser = require('body-parser')
+const { MongoClient } = require('mongodb')
+const bodyParser = require('body-parser')
 const cors = require('cors')
 
 dotenv.config()
 
-const url = process.env.MONGO_URI;
-const client = new MongoClient(url);
-
-// ✅ FIX: wait for MongoDB connection
-(async () => {
-  await client.connect();
-  console.log("MongoDB connected");
-})();
-
-const dbName = process.env.DB_NAME 
 const app = express()
-const port = 3000 
+const PORT = process.env.PORT || 3000   // ✅ FIX 1
+const DB_NAME = process.env.DB_NAME
+const MONGO_URI = process.env.MONGO_URI
 
-app.use(bodyparser.json())
+app.use(bodyParser.json())
 app.use(cors())
 
+const client = new MongoClient(MONGO_URI)
+
+let db
+
+// ✅ FIX 2: Safe Mongo connection
+async function connectDB() {
+  try {
+    await client.connect()
+    db = client.db(DB_NAME)
+    console.log("✅ MongoDB connected")
+  } catch (err) {
+    console.error("❌ MongoDB connection failed", err)
+    process.exit(1)
+  }
+}
+connectDB()
+
+// ---------------- ROUTES ----------------
+
 app.get('/', async (req, res) => {
-  const db = client.db(dbName);
-  const collection = db.collection('passwords');
-  const findResult = await collection.find({}).toArray();
-  res.json(findResult)
+  const passwords = await db.collection('passwords').find({}).toArray()
+  res.json(passwords)
 })
 
-app.post('/', async (req, res) => { 
+app.post('/', async (req, res) => {
   const password = req.body
-  const db = client.db(dbName);
-  const collection = db.collection('passwords');
-  const findResult = await collection.insertOne(password);
-  res.send({ success: true, result: findResult })
+  const result = await db.collection('passwords').insertOne(password)
+  res.json({ success: true, result })
 })
 
-app.delete('/', async (req, res) => { 
-  const password = req.body
-  const db = client.db(dbName);
-  const collection = db.collection('passwords');
-  const findResult = await collection.deleteOne(password);
-  res.send({ success: true, result: findResult })
+app.delete('/', async (req, res) => {
+  const { id } = req.body
+
+  const result = await db
+    .collection('passwords')
+    .deleteOne({ id })    // ✅ FIX 3
+
+  res.json({ success: true, result })
 })
 
-app.listen(port, () => {
-  console.log(`Example app listening on http://localhost:${port}`)
+// ---------------- SERVER ----------------
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`)
 })
