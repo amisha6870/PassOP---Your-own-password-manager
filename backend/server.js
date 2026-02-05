@@ -16,9 +16,12 @@ app.use(bodyParser.json())
 // ✅ keep only ONE cors and configure it
 app.use(cors({
   origin: "https://pass-op-your-own-password-manager-rho.vercel.app",
-  methods: ["GET","POST","DELETE","PUT"],
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type"],
   credentials: true
 }))
+
+app.options('*', cors())
 
 const client = new MongoClient(MONGO_URI)
 
