@@ -6,19 +6,25 @@ const cors = require('cors')
 
 dotenv.config()
 
-const app = express()
-const PORT = process.env.PORT || 3000   // ✅ FIX 1
+const app = express()   // ✅ app defined before use
+const PORT = process.env.PORT || 3000
 const DB_NAME = process.env.DB_NAME
 const MONGO_URI = process.env.MONGO_URI
 
 app.use(bodyParser.json())
-app.use(cors())
+
+// ✅ keep only ONE cors and configure it
+app.use(cors({
+  origin: "https://pass-op-your-own-password-manager-rho.vercel.app",
+  methods: ["GET","POST","DELETE","PUT"],
+  credentials: true
+}))
 
 const client = new MongoClient(MONGO_URI)
 
 let db
 
-// ✅ FIX 2: Safe Mongo connection
+// Mongo connection
 async function connectDB() {
   try {
     await client.connect()
@@ -31,8 +37,7 @@ async function connectDB() {
 }
 connectDB()
 
-// ---------------- ROUTES ----------------
-
+// ROUTES
 app.get('/', async (req, res) => {
   const passwords = await db.collection('passwords').find({}).toArray()
   res.json(passwords)
@@ -46,16 +51,11 @@ app.post('/', async (req, res) => {
 
 app.delete('/', async (req, res) => {
   const { id } = req.body
-
-  const result = await db
-    .collection('passwords')
-    .deleteOne({ id })    // ✅ FIX 3
-
+  const result = await db.collection('passwords').deleteOne({ id })
   res.json({ success: true, result })
 })
 
-// ---------------- SERVER ----------------
-
+// SERVER
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
 })
